@@ -6,7 +6,7 @@
 and emotional risk.**
 
 
-- Private University of Southern QLD Project / Copyrighted as per Unisq
+- Private student University of Southern QLD Project / Not affiliated 
 - Website & repository is proof of concept only 
 
 **Homepage:**
