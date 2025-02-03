@@ -1,0 +1,29 @@
+console.log("Script started"); // Confirms the script runs
+
+function myFunction() {
+  function testPreFilledLink() {
+  const formBaseURL = "https://docs.google.com/forms/d/e/1FAIpQLScqG8ez9CUL7lbAv6B9ngQFbqXN5Aok-gO5BhNEfDcJVV0cgA/viewform?";
+  const teacherName = "Mrs Holly";
+  const studentName = "Sam";
+  const day = "01";
+  const month = "01";
+  const year = "2007";
+
+  const preFilledLink = `${formBaseURL}entry.366340186=${encodeURIComponent(teacherName)}` +
+                        `&entry.877291321=${encodeURIComponent(studentName)}` +
+                        `&entry.1778958473_day=${day}` +
+                        `&entry.1778958473_month=${month}` +
+                        `&entry.1778958473_year=${year}`;
+
+  
+  function debugSheetData() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  const dataRange = sheet.getDataRange();
+  const data = dataRange.getValues();
+  
+  Logger.log(data); // Logs all the data from your sheet
+}
+
+}
+
+}
