@@ -1,0 +1,27 @@
+function myFunction() {
+  function generatePreFilledLinks() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  const formBaseURL = "https://docs.google.com/forms/d/e/1FAIpQLScqG8ez9CUL7lbAv6B9ngQFbqXN5Aok-gO5BhNEfDcJVV0cgA/viewform?"; // Your form link
+  const dataRange = sheet.getDataRange();
+  const data = dataRange.getValues();
+
+  for (let i = 1; i < data.length; i++) {
+    const studentName = encodeURIComponent(data[i][0]); // Column A: Student's Name
+    const dob = data[i][1]; // Column B: DOB (formatted as DD/MM/YYYY)
+    const teacherName = encodeURIComponent(data[i][2]); // Column C: Teacher's Name
+
+    // Split DOB into day, month, and year
+    const [day, month, year] = dob.split("/");
+
+    // Build the pre-filled form link
+    const preFilledLink = `${formBaseURL}entry.366340186=${teacherName}` + // Teacher's Name
+                          `&entry.877291321=${studentName}` + // Student's Name
+                          `&entry.1778958473_day=${day}` + // DOB Day
+                          `&entry.1778958473_month=${month}` + // DOB Month
+                          `&entry.1778958473_year=${year}`; // DOB Year
+
+    // Write the generated link into Column D
+    sheet.getRange(i + 1, 4).setValue(preFilledLink); // Column D is 4th column
+  }
+}
+}
