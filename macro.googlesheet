@@ -1,27 +1,95 @@
-function myFunction() {
-  function generatePreFilledLinks() {
+function generatePreFilledLinks() {
+  Logger.log("🔹 Script started...");
+
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-  const formBaseURL = "https://docs.google.com/forms/d/e/1FAIpQLScqG8ez9CUL7lbAv6B9ngQFbqXN5Aok-gO5BhNEfDcJVV0cgA/viewform?"; // Your form link
-  const dataRange = sheet.getDataRange();
-  const data = dataRange.getValues();
-
-  for (let i = 1; i < data.length; i++) {
-    const studentName = encodeURIComponent(data[i][0]); // Column A: Student's Name
-    const dob = data[i][1]; // Column B: DOB (formatted as DD/MM/YYYY)
-    const teacherName = encodeURIComponent(data[i][2]); // Column C: Teacher's Name
-
-    // Split DOB into day, month, and year
-    const [day, month, year] = dob.split("/");
-
-    // Build the pre-filled form link
-    const preFilledLink = `${formBaseURL}entry.366340186=${teacherName}` + // Teacher's Name
-                          `&entry.877291321=${studentName}` + // Student's Name
-                          `&entry.1778958473_day=${day}` + // DOB Day
-                          `&entry.1778958473_month=${month}` + // DOB Month
-                          `&entry.1778958473_year=${year}`; // DOB Year
-
-    // Write the generated link into Column D
-    sheet.getRange(i + 1, 4).setValue(preFilledLink); // Column D is 4th column
+  const formBaseURL = "https://docs.google.com/forms/d/e/1FAIpQLScqG8ez9CUL7lbAv6B9ngQFbqXN5Aok-gO5BhNEfDcJVV0cgA/viewform?";
+  
+  const lastRow = sheet.getLastRow();
+  Logger.log(`✅ Detected last row: ${lastRow}`);
+  
+  if (lastRow < 2) {
+    Logger.log("❌ No student data found. Exiting script.");
+    return;
   }
+
+  const dataRange = sheet.getRange(2, 1, lastRow - 1, 4); // Start from Row 2
+  const data = dataRange.getValues();
+  Logger.log(`✅ Successfully retrieved ${data.length} rows.`);
+
+  let batchUpdates = [];
+
+  for (let i = 0; i < data.length; i++) {
+    try {
+      const studentName = data[i][0] ? encodeURIComponent(data[i][0]) : "";
+      const dob = data[i][1]; // Plain text DOB
+      const teacherName = data[i][2] ? encodeURIComponent(data[i][2]) : "";
+
+      if (!studentName || !dob || !teacherName) {
+        Logger.log(`❌ Row ${i + 2} has missing data. Skipping.`);
+        batchUpdates.push(["Missing data"]);
+        continue;
+      }
+
+      // Convert plain text DOB to DD/MM/YYYY
+      const formattedDOB = formatTextDate(dob);
+      if (!formattedDOB) {
+        Logger.log(`❌ Row ${i + 2} has an invalid DOB format: ${dob}`);
+        batchUpdates.push(["Invalid DOB"]);
+        continue;
+      }
+
+      Logger.log(`✅ Row ${i + 2} DOB formatted as: ${formattedDOB}`);
+      const [day, month, year] = formattedDOB.split("/");
+
+      // Construct the pre-filled form link
+      const preFilledLink = `${formBaseURL}entry.366340186=${teacherName}` +
+                            `&entry.877291321=${studentName}` +
+                            `&entry.1778958473_day=${day}` +
+                            `&entry.1778958473_month=${month}` +
+                            `&entry.1778958473_year=${year}`;
+
+      batchUpdates.push([preFilledLink]);
+      Logger.log(`✅ Row ${i + 2} Form link generated: ${preFilledLink}`);
+      
+      // Write updates in batches (every 10 rows)
+      if (batchUpdates.length >= 10) {
+        sheet.getRange(i + 2 - batchUpdates.length + 1, 4, batchUpdates.length, 1).setValues(batchUpdates);
+        batchUpdates = [];
+      }
+
+    } catch (error) {
+      Logger.log(`❌ Error processing row ${i + 2}: ${error.message}`);
+      batchUpdates.push(["Error generating link"]);
+    }
+  }
+
+  if (batchUpdates.length > 0) {
+    sheet.getRange(lastRow - batchUpdates.length + 1, 4, batchUpdates.length, 1).setValues(batchUpdates);
+  }
+
+  Logger.log("🎉 Script execution completed!");
 }
+
+// Helper function to format plain text dates into DD/MM/YYYY
+function formatTextDate(textDate) {
+  try {
+    // Remove ordinal suffix (e.g., "1st", "2nd", "3rd")
+    const cleanDate = textDate.replace(/(\d+)(st|nd|rd|th)/, "$1");
+
+    // Parse date using JavaScript Date object
+    const date = new Date(cleanDate);
+    if (isNaN(date)) {
+      return null; // Invalid date
+    }
+
+    // Format date as DD/MM/YYYY
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0"); // Month is 0-based
+    const year = date.getFullYear();
+
+    return `${day}/${month}/${year}`;
+  } catch (error) {
+    Logger.log(`❌ Error formatting date: ${textDate}, ${error.message}`);
+    return null;
+  }
 }
