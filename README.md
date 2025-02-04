@@ -2,12 +2,13 @@
 ![image](https://github.com/user-attachments/assets/c44b14d1-cbd9-431f-a630-a831f9811a55)
 
 
-**SAEBRS Dash is a PhD project designed to digitise the SAEBRS tool - a brief tool supported by research for use in universal screening for behavioral
+**SAEBRS Dash is a nested PhD project designed to digitise the SAEBRS tool - a brief tool supported by research for use in universal screening for behavioral
 and emotional risk.**
 
 
-- Private student University of Southern QLD Project / Not affiliated 
-- Website & repository is proof of concept only 
+- PhD project run by Rebecca Terlich / University of Southern QLD  
+- Website & repository is proof of concept only / Not officially affiliated
+- Copyright applies 
 
 **Homepage:**
 
