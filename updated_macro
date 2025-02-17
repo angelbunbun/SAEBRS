@@ -1,0 +1,114 @@
+function generatePreFilledLinks() {
+  Logger.log("🔹 Script started...");
+
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  const formBaseURL = "https://docs.google.com/forms/d/e/1FAIpQLScqG8ez9CUL7lbAv6B9ngQFbqXN5Aok-gO5BhNEfDcJVV0cgA/viewform?";
+  
+  const lastRow = sheet.getLastRow();
+  Logger.log(`✅ Detected last row: ${lastRow}`);
+  
+  if (lastRow < 2) {
+    Logger.log("❌ No student data found. Exiting script.");
+    return;
+  }
+
+  const dataRange = sheet.getRange(2, 1, lastRow - 1, 5); // Adjusted for 5 columns now
+  const data = dataRange.getValues();
+  Logger.log(`✅ Successfully retrieved ${data.length} rows.`);
+
+  let batchUpdates = [];
+
+  for (let i = 0; i < data.length; i++) {
+    try {
+      const studentName = data[i][0] ? encodeURIComponent(data[i][0]) : "";
+      const dob = data[i][1]; // Plain text DOB
+      const studentGrade = data[i][2] ? encodeURIComponent(data[i][2]) : ""; // New grade column
+      const teacherName = data[i][3] ? encodeURIComponent(data[i][3]) : ""; // Teachers Name
+
+      if (!studentName || !dob || !studentGrade || !teacherName) {
+        Logger.log(`❌ Row ${i + 2} has missing data. Skipping.`);
+        batchUpdates.push(["Missing data"]);
+        continue;
+      }
+
+      // Convert plain text DOB to DD/MM/YYYY
+      const formattedDOB = formatTextDate(dob);
+      if (!formattedDOB) {
+        Logger.log(`❌ Row ${i + 2} has an invalid DOB format: ${dob}`);
+        batchUpdates.push(["Invalid DOB"]);
+        continue;
+      }
+
+      Logger.log(`✅ Row ${i + 2} DOB formatted as: ${formattedDOB}`);
+      const [day, month, year] = formattedDOB.split("/");
+
+      // Students Grade field entry ID
+      const studentsGradeEntryID = "entry.1364431416"; // Replace with actual ID for Grade field
+
+      // Construct the pre-filled form link
+      const preFilledLink = `${formBaseURL}entry.366340186=${teacherName}` + // Teacher's Name
+                            `&entry.877291321=${studentName}` + // Student's Name
+                            `&entry.1778958473_day=${day}` + // DOB - Day
+                            `&entry.1778958473_month=${month}` + // DOB - Month
+                            `&entry.1778958473_year=${year}` + // DOB - Year
+                            `&${studentsGradeEntryID}=${studentGrade}`; // Student's Grade
+
+      batchUpdates.push([preFilledLink]);
+      Logger.log(`✅ Row ${i + 2} Form link generated: ${preFilledLink}`);
+      
+      // Write updates in batches (every 10 rows)
+      if (batchUpdates.length >= 10) {
+        sheet.getRange(i + 2 - batchUpdates.length + 1, 5, batchUpdates.length, 1).setValues(batchUpdates);
+        batchUpdates = [];
+      }
+
+    } catch (error) {
+      Logger.log(`❌ Error processing row ${i + 2}: ${error.message}`);
+      batchUpdates.push(["Error generating link"]);
+    }
+  }
+
+  if (batchUpdates.length > 0) {
+    sheet.getRange(lastRow - batchUpdates.length + 1, 5, batchUpdates.length, 1).setValues(batchUpdates);
+  }
+
+  Logger.log("🎉 Script execution completed!");
+}
+
+// Helper function to format plain text dates into DD/MM/YYYY
+function formatTextDate(textDate) {
+  try {
+    // Remove ordinal suffixes (st, nd, rd, th) and the word "of"
+    let cleanDate = textDate.replace(/(\d+)(st|nd|rd|th)?\s?(of\s)?/, "$1 ");
+
+    // Convert Month Names (e.g., "Jan" → "January")
+    const monthNames = {
+      "Jan": "January", "Feb": "February", "Mar": "March", "Apr": "April",
+      "May": "May", "Jun": "June", "Jul": "July", "Aug": "August",
+      "Sep": "September", "Oct": "October", "Nov": "November", "Dec": "December"
+    };
+
+    Object.keys(monthNames).forEach(shortMonth => {
+      if (cleanDate.includes(shortMonth)) {
+        cleanDate = cleanDate.replace(shortMonth, monthNames[shortMonth]);
+      }
+    });
+
+    // Parse the date string into a valid JavaScript Date object
+    const date = new Date(cleanDate);
+    if (isNaN(date)) {
+      Logger.log(`❌ Could not parse date: ${textDate}`);
+      return null; // Return null if parsing fails
+    }
+
+    // Convert to DD/MM/YYYY format
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0"); // Month is 0-based
+    const year = date.getFullYear();
+
+    return `${day}/${month}/${year}`;
+  } catch (error) {
+    Logger.log(`❌ Error formatting date: ${textDate}, ${error.message}`);
+    return null;
+  }
+}
