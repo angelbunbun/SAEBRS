@@ -1,0 +1,63 @@
+function GoodnaScript() {
+  Logger.log("🔹 GoodnaScript started...");
+
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  const formBaseURL = "https://docs.google.com/forms/d/e/1FAIpQLScfgqUe5pcmYxffDWT18LZBDePOYJ_Kmbpau8DaKiRBIWLs_A/viewform?";
+
+  const lastRow = sheet.getLastRow();
+  Logger.log(`✅ Detected last row: ${lastRow}`);
+
+  if (lastRow < 2) {
+    Logger.log("❌ No student data found. Exiting script.");
+    return;
+  }
+
+  const dataRange = sheet.getRange(2, 1, lastRow - 1, 5); // Columns A–E
+  const data = dataRange.getValues();
+  Logger.log(`✅ Successfully retrieved ${data.length} rows.`);
+
+  let batchUpdates = [];
+
+  for (let i = 0; i < data.length; i++) {
+    try {
+      const studentName = data[i][0] ? encodeURIComponent(data[i][0]) : "";
+      const studentGrade = data[i][1] ? encodeURIComponent(data[i][1]) : "";
+      const teacherName = data[i][2] ? encodeURIComponent(data[i][2]) : "";
+
+      if (!studentName || !studentGrade || !teacherName) {
+        Logger.log(`❌ Row ${i + 2} has missing data. Skipping.`);
+        batchUpdates.push(["Missing data"]);
+        continue;
+      }
+
+      // Field entry IDs from your Goodna form
+      const studentEntryID = "entry.877291321";
+      const gradeEntryID = "entry.1364431416";
+      const teacherEntryID = "entry.366340186";
+
+      // Construct the pre-filled form link
+      const preFilledLink = `${formBaseURL}${studentEntryID}=${studentName}` +
+                            `&${gradeEntryID}=${studentGrade}` +
+                            `&${teacherEntryID}=${teacherName}`;
+
+      batchUpdates.push([preFilledLink]);
+      Logger.log(`✅ Row ${i + 2} Form link generated: ${preFilledLink}`);
+
+      // Write every 10 rows
+      if (batchUpdates.length >= 10) {
+        sheet.getRange(i + 2 - batchUpdates.length + 1, 5, batchUpdates.length, 1).setValues(batchUpdates); // Column E
+        batchUpdates = [];
+      }
+
+    } catch (error) {
+      Logger.log(`❌ Error processing row ${i + 2}: ${error.message}`);
+      batchUpdates.push(["Error generating link"]);
+    }
+  }
+
+  if (batchUpdates.length > 0) {
+    sheet.getRange(lastRow - batchUpdates.length + 1, 5, batchUpdates.length, 1).setValues(batchUpdates); // Column E
+  }
+
+  Logger.log("🎉 GoodnaScript execution completed!");
+}
