@@ -1,0 +1,118 @@
+function filterAndScoreSAEBRS() {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var responsesSheet = ss.getSheetByName("Form responses 1");
+    var activeSheet = ss.getActiveSheet();
+    var sheetName = activeSheet.getName();
+    
+    Logger.log("🚀 Script started: Filtering and Scoring SAEBRS");
+    
+    // Get the class entered in the template (assume input is in A3)
+    var gradeToFilter = activeSheet.getRange("A3").getValue().toString().trim();
+    if (gradeToFilter == "") {
+        gradeToFilter = sheetName; // Use the sheet name if A3 is empty
+    }
+    Logger.log("📌 Filtering for grade: " + gradeToFilter);
+    
+    if (gradeToFilter == "") {
+        SpreadsheetApp.getUi().alert("⚠️ Please enter a class in the sheet name or in cell A3 to filter data.");
+        Logger.log("⛔ No grade entered. Exiting script.");
+        return;
+    }
+    
+    // Get all responses
+    var responsesData = responsesSheet.getDataRange().getValues();
+    var headers = responsesData[0]; // First row is headers
+    var output = [];
+    
+    // Debug: Log all unique grades found in column E
+    var uniqueGrades = new Set();
+    for (var i = 1; i < responsesData.length; i++) {
+        uniqueGrades.add(responsesData[i][4].toString().trim());
+    }
+    Logger.log("📋 Unique grades found in column E: " + Array.from(uniqueGrades).join(", "));
+    
+    // Define column mappings based on required format
+    var studentInfoCols = [4, 5, 2, 3]; // Columns E (Grade), F (Teacher), C (Student Name), D (DOB)
+    var responseStartCol = 6; // Column G (First question starts here)
+    var responseEndCol = 24; // Column Y (Last question ends here)
+    
+    // Define SAEBRS scoring system
+    var normalScoring = { "Never": 3, "Sometimes": 2, "Often": 1, "Almost Always": 0 };
+    var reverseScoring = { "Never": 0, "Sometimes": 1, "Often": 2, "Almost Always": 3 };
+    
+    // Define reverse-scored items
+    var reverseScoredItems = [
+        "Cooperation with peers",
+        "Polite and socially appropriate responses toward others",
+        "Interest in academic topics",
+        "Preparedness for instruction",
+        "Production of acceptable work",
+        "Academic engagement",
+        "Adaptable to change",
+        "Positive attitude"
+    ];
+    
+    Logger.log("🎯 Scoring system initialized.");
+    
+    // Iterate through responses and filter based on Grade (assumed to be column E, index 4)
+    for (var i = 1; i < responsesData.length; i++) {
+        if (responsesData[i][4].toString().trim() == gradeToFilter) {
+            Logger.log("👩‍🎓 Processing student: " + responsesData[i][2]);
+            
+            var rowData = [];
+            
+            // Copy student info columns (E, F, C, D -> Grade, Teacher, Student Name, DOB)
+            studentInfoCols.forEach(col => rowData.push(responsesData[i][col].toString())); // Ensure text format
+            
+            var socialScore = 0, academicScore = 0, emotionalScore = 0;
+            var behaviorResponses = [];
+            
+            // Process SAEBRS responses (Columns G to Y)
+            for (var j = responseStartCol; j <= responseEndCol; j++) {
+                var response = responsesData[i][j];
+                var itemName = headers[j].split("[")[1].split("]")[0]; // Extract behavior item
+                Logger.log("📊 Column " + (j+1) + " response: " + response);
+                
+                // Apply reverse scoring if applicable
+                var score = reverseScoredItems.includes(itemName) ? reverseScoring[response] || 0 : normalScoring[response] || 0;
+                behaviorResponses.push(score);
+                
+                // Assign scores to subscales
+                if (j < responseStartCol + 6) socialScore += score;
+                else if (j < responseStartCol + 12) academicScore += score;
+                else emotionalScore += score;
+            }
+            
+            // Calculate total score
+            var totalScore = socialScore + academicScore + emotionalScore;
+            Logger.log("📈 Scores - Social: " + socialScore + " 🟢, Academic: " + academicScore + " 🔵, Emotional: " + emotionalScore + " 🔴, Total: " + totalScore);
+            
+            var benchmarks = [
+                socialScore <= 12 ? "⚠️ At Risk" : "✅ Not At Risk",
+                academicScore <= 9 ? "⚠️ At Risk" : "✅ Not At Risk",
+                emotionalScore <= 17 ? "⚠️ At Risk" : "✅ Not At Risk",
+                totalScore <= 36 ? "⚠️ At Risk" : "✅ Not At Risk"
+            ];
+            
+            // Insert all data into correct columns
+            rowData.push(socialScore, academicScore, emotionalScore, totalScore);
+            rowData.push(...benchmarks);
+            rowData.push(...behaviorResponses);
+            
+            Logger.log("✔️ Risk classification completed.");
+            output.push(rowData);
+        }
+    }
+    
+    // Write filtered and processed data to the active sheet starting from row 3
+    if (output.length > 0) {
+        activeSheet.getRange(3, 1, output.length, output[0].length).setValues(output);
+        SpreadsheetApp.getUi().alert("✅ SAEBRS data for class " + gradeToFilter + " has been processed successfully!");
+        Logger.log("✅ Successfully wrote " + output.length + " rows to " + sheetName + " sheet.");
+    } else {
+        SpreadsheetApp.getUi().alert("⚠️ No matching records found for class " + gradeToFilter);
+        Logger.log("⚠️ No matching records found.");
+    }
+    
+    Logger.log("🏁 Script execution completed.");
+}
