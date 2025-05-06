@@ -1,0 +1,60 @@
+function main(workbook: ExcelScript.Workbook) {
+    const sheet = workbook.getActiveWorksheet();
+    const range = sheet.getUsedRange();
+    const rowCount = range.getRowCount();
+
+    const baseURL = "https://forms.cloud.microsoft/Pages/ResponsePage.aspx?id=k_v7fbYZhUmsflAaN5OEVlKjMWQINItOsEeUtmB-h_5UMExFTTdSS1JYVjdFVTVPT0xBUUpZUk5DVC4u";
+    const studentIDField = "r93127b4082954db5beafde91655e94cc";
+    const gradeField = "rcda1b3f0e6fa492296cd6e220b7faba3";
+    const teacherField = "rd75043563d25452fa749b6d0c34a09f2";
+
+    // 🔁 Manual mapping from full names to initials
+    const teacherNameMap: { [key: string]: string } = {
+        "Rachel Aske": "Miss RA",
+        "Samantha Long": "Ms SL",
+        "John Baker": "Mr JB"
+    };
+
+    for (let i = 1; i < rowCount; i++) {
+        const rowIndex = i + 1;
+
+        const studentIDCell = sheet.getRange(`B${rowIndex}`);
+        const gradeCell = sheet.getRange(`C${rowIndex}`);
+        const teacherCell = sheet.getRange(`D${rowIndex}`);
+        const linkCell = sheet.getRange(`E${rowIndex}`);
+
+        let studentID = studentIDCell.getValue() as string;
+        let grade = gradeCell.getValue() as string;
+        let teacher = teacherCell.getValue() as string;
+
+        // ✅ Error check: blank fields
+        if (!studentID || !grade || !teacher) {
+            linkCell.setValue("⚠️ Missing data – refer to 'Table of Contents Help'");
+            continue;
+        }
+
+        // 🔁 Auto-correct full name if it matches known teacher
+        if (teacherNameMap[teacher]) {
+            const corrected = teacherNameMap[teacher];
+            teacher = corrected;
+            teacherCell.setValue(corrected); // Write corrected value into sheet
+        }
+
+        // ⚠️ Symbol check – only allow alphanumerics + space
+        const formatCheck = /^[a-zA-Z0-9\\s]+$/;
+        if (!formatCheck.test(studentID) || !formatCheck.test(grade)) {
+            linkCell.setValue("⚠️ Invalid characters in input – please check formatting");
+            continue;
+        }
+
+        // 🧩 Create full prefilled URL
+        const prefilledURL = `${baseURL}&${studentIDField}=${encodeURIComponent(studentID)}&${gradeField}=${encodeURIComponent(grade)}&${teacherField}=${encodeURIComponent(teacher)}`;
+
+        // 🟢 Add the labelled hyperlink
+        linkCell.setHyperlink({
+            address: prefilledURL,
+            textToDisplay: "Hover here to open form"
+        });
+
+    }
+}
