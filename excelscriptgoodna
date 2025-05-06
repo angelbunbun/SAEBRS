@@ -10,7 +10,7 @@ function main(workbook: ExcelScript.Workbook) {
 
     // 🔁 Manual mapping from full names to initials
     const teacherNameMap: { [key: string]: string } = {
-        "Rachel Aske": "Miss RA",
+        "Rachel Ann": "Miss RA",
         "Samantha Long": "Ms SL",
         "John Baker": "Mr JB"
     };
