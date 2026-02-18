@@ -1,0 +1,56 @@
+function main(workbook: ExcelScript.Workbook) {
+    const sheet = workbook.getActiveWorksheet();
+    const range = sheet.getUsedRange();
+    const rowCount = range.getRowCount();
+
+    const baseURL = "https://forms.office.com/Pages/ResponsePage.aspx?id=k_v7fbYZhUmsflAaN5OEVlKjMWQINItOsEeUtmB-h_5UNlpHSUxTMlo2S0wwWFREM0FBUk5BS1NNVS4u";
+    const studentIDField = "r93127b4082954db5beafde91655e94cc";
+    const dobField = "r27aec6eeb43041049bbe4df1e8ec5ce8";
+    const gradeField = "rcda1b3f0e6fa492296cd6e220b7faba3";
+
+    for (let i = 1; i < rowCount; i++) {
+        const rowIndex = i + 1;
+
+        const dobCell = sheet.getRange(`B${rowIndex}`);
+        const gradeCell = sheet.getRange(`D${rowIndex}`);
+        const studentIDCell = sheet.getRange(`F${rowIndex}`);
+        const linkCell = sheet.getRange(`H${rowIndex}`);
+
+        let dob = dobCell.getValue() as string;
+        let grade = gradeCell.getValue() as string;
+        let studentID = studentIDCell.getValue() as string;
+
+        // ✅ Error check: blank fields
+        if (!dob || !grade || !studentID) {
+            linkCell.setValue("⚠️ Missing data – please check this row");
+            continue;
+        }
+
+        // ⚠️ Validate DOB format DD/MM/YYYY
+        const dobFormat = /^\d{2}\/\d{2}\/\d{4}$/;
+        if (!dobFormat.test(dob)) {
+            linkCell.setValue("⚠️ Invalid DOB format – expected DD/MM/YYYY");
+            continue;
+        }
+
+        // ⚠️ Validate grade and student ID
+        const alphanumFormat = /^[a-zA-Z0-9\s]+$/;
+        if (!alphanumFormat.test(grade) || !alphanumFormat.test(studentID)) {
+            linkCell.setValue("⚠️ Invalid characters in Grade or Student ID");
+            continue;
+        }
+
+        // 📅 Convert DD/MM/YYYY → YYYY-MM-DD for Microsoft Forms URL parameter
+        const parts = dob.split("/");
+        const isoDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+
+        // 🧩 Build prefilled URL
+        const prefilledURL = `${baseURL}&${studentIDField}=${encodeURIComponent(studentID)}&${dobField}=${encodeURIComponent(isoDate)}&${gradeField}=${encodeURIComponent(grade)}`;
+
+        // 🟢 Write hyperlink into H column
+        linkCell.setHyperlink({
+            address: prefilledURL,
+            textToDisplay: "Open prefilled form"
+        });
+    }
+}
